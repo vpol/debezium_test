@@ -1,0 +1,9 @@
+[[subscription]]
+project = "local-docker"
+subscription = "debezium-test-cdc-sub"
+topic = "debezium-test-cdc"
+
+[[subscription]]
+project = "local-docker"
+subscription = "debezium-test-table3-sub"
+topic = "topic_prefix.public.table3"

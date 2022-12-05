@@ -1,0 +1,116 @@
+version: '3.8'
+
+x-common-variables: &common-variables
+  LOGLEVEL: ${LOGLEVEL:-trace}
+  TRACING: ${TRACING:-0}
+  METRICS: ${METRICS:-0}
+  GODEBUG: ${GODEBUG}
+  GOGC: ${GOGC}
+  GIN_MODE: ${GIN_MODE:-debug}
+  GCLOUD_PROJECT: ${GCLOUD_PROJECT:-local-docker}
+  GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+  PUBSUB_EMULATOR_HOST: ${PUBSUB_EMULATOR_HOST:-gpubsub:8681}
+  PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID:-local-docker}
+
+x-db-variables: &db-variables
+  DEBEZIUM_TEST_DB_HOST: ${KRATOS_DB_HOST:-pgsql}
+  DEBEZIUM_TEST_DB_PORT: ${KRATOS_DB_PORT:-5432}
+  DEBEZIUM_TEST_DB_USER: ${KRATOS_DB_USER:-postgres}
+  DEBEZIUM_TEST_DB_PASSWORD: ${KRATOS_DB_PASSWORD:-1q2w3e}
+  DEBEZIUM_TEST_DB_NAME: ${KRATOS_DB_NAME:-debezium_test}
+
+x-listener-variables: &listener-variables
+  CDC_SUBSCRIPTION_NAME: ${CDC_SUBSCRIPTION_NAME:-debezium-test-cdc-sub}
+  TABLE3_SUBSCRIPTION_NAME: ${TABLE3_SUBSCRIPTION_NAME:-debezium-test-table3-sub}
+
+services:
+
+  pgsql:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=debezium_test
+      - POSTGRES_PASSWORD=1q2w3e
+    volumes:
+      - ./.data/pgsql/pg-init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - debezium_test
+
+  debezium-test-migrate:
+    image: "${IMAGE_NAME}:${IMAGE_TAG}"
+    restart: on-failure
+    environment:
+      <<: *common-variables
+      <<: *db-variables
+    command: [ "/debezium_test", "migrate_pgdb", "--prefixes=debezium_test", "--migration_path=/migrations" ]
+    depends_on:
+      pgsql:
+        condition: service_healthy
+    networks:
+      - debezium_test
+
+  debezium:
+    restart: on-failure
+    image: debezium/server:2.0
+    volumes:
+      - ./.data/debezium/conf:/debezium/conf
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      debezium-test-migrate:
+        condition: service_completed_successfully
+      gpubsub:
+        condition: service_healthy
+    networks:
+      - debezium_test
+
+  debezium-test-cdc-listener:
+    image: "${IMAGE_NAME}:${IMAGE_TAG}"
+    restart: on-failure
+    environment:
+      <<: *common-variables
+      <<: *db-variables
+      <<: *listener-variables
+      LISTEN: 0.0.0.0:3001
+    ports:
+      - "3001:3001"
+    command: [ "/debezium_test", "cdc_listener" ]
+    depends_on:
+      debezium-test-migrate:
+        condition: service_completed_successfully
+      gpubsub:
+        condition: service_healthy
+    networks:
+      - debezium_test
+
+  gpubsub:
+    restart: on-failure
+    image: vpol/gcloud-pubsub-emulator:latest
+    environment:
+      - CONFIG_FILE=/conf/config.toml
+      - LOGLEVEL=trace
+    volumes:
+      - ./.data/gpubsub:/conf
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "gpubsub", "8682" ]
+      start_period: 5s
+      interval: 2s
+      timeout: 1s
+      retries: 20
+    ports:
+      - "8682:8682"
+    networks:
+      - debezium_test
+
+networks:
+  debezium_test: { }
