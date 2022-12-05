@@ -8,7 +8,6 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/automaxprocs v1.5.1
-	gorm.io/gorm v1.24.2
 )
 
 require (
@@ -87,4 +86,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.3.7 // indirect
+	gorm.io/gorm v1.24.2 // indirect
 )

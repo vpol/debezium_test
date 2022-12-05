@@ -3,12 +3,12 @@
 package debezium_test
 
 import (
-	"github.com/dailydotdev/debezium_test/models"
 	"github.com/dailydotdev/platform-go-common/ext/pgsql"
 	"github.com/dailydotdev/platform-go-common/util/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
+	"github.com/vpol/debezium_test/models"
 	"testing"
 )
 

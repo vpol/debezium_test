@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/dailydotdev/debezium_test/cmd/cdc_listener"
 	_ "github.com/dailydotdev/platform-go-common/ext/gcp"
 	"github.com/dailydotdev/platform-go-common/util/logging"
 	"github.com/dailydotdev/platform-go-common/util/metrics"
 	"github.com/dailydotdev/platform-go-common/util/migrations"
 	"github.com/dailydotdev/platform-go-common/util/tracing"
+	"github.com/vpol/debezium_test/cmd/cdc_listener"
 )
 
 var (
